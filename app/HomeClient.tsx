@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useWhatsappLink } from './hooks/useWhatsappLink';
 import styles from './page.module.css';
-
-const whatsappLink = 'https://wa.me/5527999999999'; // TODO: substituir pelo link oficial
 
 export function HomeClient() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const whatsappLink = useWhatsappLink(
+    'Olá! Quero falar com a equipe do Dr. Fernando sobre a Consulta de Análise Metabólica.'
+  );
 
   const testimonials = [
     {
@@ -57,7 +59,7 @@ export function HomeClient() {
             Unindo ciência e acompanhamento personalizado em protocolos desenhados para o metabolismo da mulher.
           </p>
             <div className={styles.heroActions}>
-              <Link className={styles.ctaSecondary} href="#quiz">
+              <Link className={styles.ctaSecondary} href="/a">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>

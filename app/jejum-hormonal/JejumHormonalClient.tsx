@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useWhatsappLink } from '../hooks/useWhatsappLink';
 import styles from './page.module.css';
-
-const whatsappLink = 'https://wa.me/5527999999999'; // TODO: substituir pelo link oficial
 
 export function JejumHormonalClient() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [currentBenefit, setCurrentBenefit] = useState(0);
+  const whatsappLink = useWhatsappLink(
+    'Olá! Quero falar com a equipe do Dr. Fernando.',
+    'Olá! Acabei de fazer o quiz e recebi o resultado Mulher 40+ / Tríade. Quero saber como funciona o Jejum Hormonal.'
+  );
 
   const testimonials = [
     {

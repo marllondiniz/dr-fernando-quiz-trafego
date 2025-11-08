@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useWhatsappLink } from '../hooks/useWhatsappLink';
 import styles from './page.module.css';
-
-const whatsappLink = 'https://wa.me/5527999999999'; // TODO: substituir pelo link oficial
 
 export function LipedemaClient() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const whatsappLink = useWhatsappLink(
+    'Olá! Quero falar com a equipe do Dr. Fernando.',
+    'Olá! Acabei de fazer o quiz e recebi indícios de Lipedema. Preciso de orientação personalizada.'
+  );
 
   const testimonials = [
     {

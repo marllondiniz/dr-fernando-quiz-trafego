@@ -42,7 +42,7 @@
 .heroContent {
   position: relative;
   max-width: 750px;
-  margin: clamp(6rem, 20vh, 14rem) 0 0;
+  margin: clamp(1rem, 8vh, 4.5rem) 0 0;
   text-align: left;
 }
 

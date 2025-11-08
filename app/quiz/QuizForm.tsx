@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './quiz.module.css';
 import { getQuizVariation, QuizVariationKey } from './quizConfig';
@@ -187,6 +187,33 @@ function getResultType(answers: QuizAnswers): QuizResultType {
   return hasTriadTrigger ? 'triad' : 'triad';
 }
 
+const resultTypeLabels: Record<QuizResultType, string> = {
+  triad: 'Mulher 40+ / Tríade',
+  lipedema: 'Lipedema',
+};
+
+function buildAnswerSummary(answers: QuizAnswers): string[] {
+  return questions
+    .map((question) => {
+      const answerValue = answers[question.id];
+      if (!answerValue || (Array.isArray(answerValue) && answerValue.length === 0)) {
+        return null;
+      }
+
+      const values = Array.isArray(answerValue) ? answerValue : [answerValue];
+      const labels = values
+        .map((value) => question.options.find((option) => option.value === value)?.label)
+        .filter((label): label is string => Boolean(label));
+
+      if (!labels.length) {
+        return null;
+      }
+
+      return `${question.title}: ${labels.join(', ')}`;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
 export function QuizForm({ variationKey }: QuizFormProps) {
   const variation = getQuizVariation(variationKey);
   const router = useRouter();
@@ -198,14 +225,42 @@ export function QuizForm({ variationKey }: QuizFormProps) {
   const progress = Math.round(((stepIndex + Number(showResult)) / (questions.length + 1)) * 100);
   const resultType = showResult ? getResultType(answers) : null;
 
+  const persistQuizSummary = useCallback(
+    (result: QuizResultType) => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const summary = buildAnswerSummary(answers);
+      const payload = {
+        summary,
+        resultType: result,
+        resultLabel: resultTypeLabels[result],
+        variationKey,
+        variationUtm: variation.utmValue,
+        timestamp: new Date().toISOString(),
+      };
+
+      try {
+        sessionStorage.setItem('quizAnswersSummary', JSON.stringify(payload));
+      } catch {
+        // ignore storage errors
+      }
+    },
+    [answers, variationKey, variation.utmValue]
+  );
+
   useEffect(() => {
-    if (!showResult) return;
+    if (!showResult || !resultType) return;
+
+    persistQuizSummary(resultType);
+
     if (resultType === 'triad') {
       router.push(`/jejum-hormonal?var=${variation.utmValue}`);
     } else if (resultType === 'lipedema') {
       router.push(`/lipedema?var=${variation.utmValue}`);
     }
-  }, [showResult, resultType, router, variation.utmValue]);
+  }, [showResult, resultType, router, variation.utmValue, persistQuizSummary]);
 
   const handleNext = () => {
     if (!currentQuestion) {
