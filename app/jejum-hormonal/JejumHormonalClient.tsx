@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
 import { useWhatsappLink } from '../hooks/useWhatsappLink';
+import { VTurbPlayerJejum } from './VTurbPlayerJejum';
 import styles from './page.module.css';
 
 export function JejumHormonalClient() {
@@ -144,12 +145,7 @@ export function JejumHormonalClient() {
           <span className={styles.highlight}>assista isso.</span>
         </h2>
         <div className={styles.videoWrapper}>
-          <div className={styles.videoPlaceholder}>
-            <svg className={styles.playIcon} viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            <span>Vídeo exclusivo</span>
-          </div>
+          <VTurbPlayerJejum />
         </div>
         <p className={styles.supportText}>
           Descubra o método que já ajudou <span className={styles.highlight}>mais de 10 mil mulheres</span> a emagrecer sem restringir carboidrato.

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
 import { useWhatsappLink } from '../hooks/useWhatsappLink';
+import { VTurbPlayerLipedema } from './VTurbPlayerLipedema';
 import styles from './page.module.css';
 
 export function LipedemaClient() {
@@ -124,12 +125,7 @@ export function LipedemaClient() {
           Assista isso agora.
         </h2>
         <div className={styles.videoWrapper}>
-          <div className={styles.videoPlaceholder}>
-            <svg className={styles.playIcon} viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            <span>Vídeo sobre Lipedema</span>
-          </div>
+          <VTurbPlayerLipedema />
         </div>
         <p className={styles.supportText}>
           Mulheres com lipedema <span className={styles.highlight}>não falham</span> nas dietas. As dietas é que <span className={styles.highlight}>falham com elas.</span>
@@ -155,9 +151,7 @@ export function LipedemaClient() {
           <h1 className={styles.headline}>
             Gordura no culote, pernas grossas, <span className={styles.highlight}>dor ao toque?</span>
             <br />
-            Pode não ser gordura comum.
-            <br />
-            <span className={styles.highlightAlt}>Pode ser LIPEDEMA.</span>
+            Pode ser <span className={styles.highlightAlt}>LIPEDEMA.</span>
           </h1>
 
           <div className={styles.problemsList}>
