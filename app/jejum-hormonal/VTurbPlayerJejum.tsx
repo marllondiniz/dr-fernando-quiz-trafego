@@ -26,7 +26,7 @@ export function VTurbPlayerJejum() {
     document.head.appendChild(performanceScript);
 
     // Inserir o elemento do player IMEDIATAMENTE (antes dos scripts)
-    const embedHTML = '<vturb-smartplayer id="vid-692dd76e8c029b83a0a2fbb4" style="display:block;margin:0 auto;width:100%;height:100%;"></vturb-smartplayer>';
+    const embedHTML = '<vturb-smartplayer id="vid-692dd76e8c029b83a0a2fbb4" autoplay playsinline style="display:block;margin:0 auto;width:100%;height:100%;"></vturb-smartplayer>';
     containerRef.current.innerHTML = embedHTML;
 
     // Verificar se o smartplayer.js já foi carregado
@@ -49,7 +49,39 @@ export function VTurbPlayerJejum() {
       playerScript.type = 'text/javascript';
       playerScript.src = 'https://scripts.converteai.net/7884099c-a7d0-4d10-b5db-0f8165b855ab/players/692dd76e8c029b83a0a2fbb4/v4/player.js';
       playerScript.async = true;
+      
+      playerScript.onload = () => {
+        // Aguardar o player estar pronto e tentar habilitar autoplay com áudio
+        setTimeout(() => {
+          const player = containerRef.current?.querySelector('vturb-smartplayer') as any;
+          if (player && player.video) {
+            player.video.muted = false;
+            player.video.play().catch(() => {
+              // Se falhar, tentar com muted primeiro e depois habilitar áudio
+              player.video.muted = true;
+              player.video.play().then(() => {
+                player.video.muted = false;
+              }).catch(() => {});
+            });
+          }
+        }, 1000);
+      };
+      
       document.head.appendChild(playerScript);
+    } else {
+      // Se o script já existe, tentar habilitar autoplay
+      setTimeout(() => {
+        const player = containerRef.current?.querySelector('vturb-smartplayer') as any;
+        if (player && player.video) {
+          player.video.muted = false;
+          player.video.play().catch(() => {
+            player.video.muted = true;
+            player.video.play().then(() => {
+              player.video.muted = false;
+            }).catch(() => {});
+          });
+        }
+      }, 1000);
     }
 
     initializedRef.current = true;
