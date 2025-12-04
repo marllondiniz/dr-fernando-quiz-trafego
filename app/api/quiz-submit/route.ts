@@ -51,13 +51,31 @@ export async function POST(request: NextRequest) {
 
     const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    
+    // Processar a chave privada - lidar com diferentes formatos
+    let PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
+    
+    if (PRIVATE_KEY) {
+      // Se a chave contém \n literal (string), substituir por quebra de linha real
+      PRIVATE_KEY = PRIVATE_KEY.replace(/\\n/g, '\n');
+      
+      // Se a chave não começa com -----BEGIN, pode estar faltando quebras de linha
+      if (!PRIVATE_KEY.includes('-----BEGIN PRIVATE KEY-----')) {
+        console.error('❌ Formato de chave privada inválido');
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Formato de chave privada inválido' 
+        }, { status: 500 });
+      }
+    }
 
     if (!SPREADSHEET_ID || !SERVICE_ACCOUNT_EMAIL || !PRIVATE_KEY) {
       console.error('❌ Variáveis de ambiente do Google Sheets não configuradas:', {
         hasSpreadsheetId: !!SPREADSHEET_ID,
         hasServiceAccountEmail: !!SERVICE_ACCOUNT_EMAIL,
-        hasPrivateKey: !!PRIVATE_KEY
+        hasPrivateKey: !!PRIVATE_KEY,
+        privateKeyLength: PRIVATE_KEY?.length || 0,
+        privateKeyStartsWith: PRIVATE_KEY?.substring(0, 30) || 'N/A'
       });
       return NextResponse.json({ success: false, message: 'Configuração faltando' }, { status: 500 });
     }
