@@ -214,20 +214,86 @@ function buildAnswerSummary(answers: QuizAnswers): string[] {
     .filter((item): item is string => Boolean(item));
 }
 
+interface ContactData {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export function QuizForm({ variationKey }: QuizFormProps) {
   const variation = getQuizVariation(variationKey);
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswers>({});
   const [showResult, setShowResult] = useState(false);
+  const [contactData, setContactData] = useState<ContactData>({
+    name: '',
+    email: '',
+    phone: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentQuestion = stepIndex === 0 ? undefined : questions[stepIndex - 1];
-  const progress = Math.round(((stepIndex + Number(showResult)) / (questions.length + 1)) * 100);
+  const isContactStep = stepIndex === questions.length + 1;
+  const currentQuestion = stepIndex === 0 ? undefined : stepIndex <= questions.length ? questions[stepIndex - 1] : undefined;
+  const totalSteps = questions.length + 2; // questions + contact + result
+  const progress = Math.round(((stepIndex + Number(showResult)) / totalSteps) * 100);
   const resultType = showResult ? getResultType(answers) : null;
   const currentResponse = currentQuestion ? answers[currentQuestion.id] : undefined;
   const isNextDisabled =
     stepIndex > 0 &&
+    stepIndex <= questions.length &&
     (!currentResponse || (Array.isArray(currentResponse) && currentResponse.length === 0));
+  // Validação do formulário de contato
+  const isContactFormValid = 
+    contactData.name.trim().length > 0 && 
+    contactData.email.trim().length > 0 && 
+    contactData.email.includes('@') &&
+    contactData.phone.trim().length > 0;
+
+  const sendToGoogleSheets = useCallback(
+    async (result: QuizResultType) => {
+      try {
+        setIsSubmitting(true);
+        const summary = buildAnswerSummary(answers);
+        const payload = {
+          name: contactData.name,
+          email: contactData.email,
+          phone: contactData.phone,
+          summary,
+          resultType: result,
+          resultLabel: resultTypeLabels[result],
+          variationKey,
+          variationUtm: variation.utmValue,
+          timestamp: new Date().toISOString(),
+        };
+
+        console.log('📤 Enviando dados para Google Sheets...', payload);
+
+        const response = await fetch('/api/quiz-submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const responseData = await response.json();
+        console.log('📥 Resposta da API:', responseData);
+
+        if (!response.ok) {
+          console.error('❌ Erro ao enviar para Google Sheets:', responseData);
+        } else {
+          console.log('✅ Dados enviados com sucesso!');
+        }
+      } catch (error: any) {
+        console.error('❌ Erro ao enviar dados:', error);
+        console.error('Detalhes:', error.message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [answers, contactData, variationKey, variation.utmValue]
+  );
 
   const persistQuizSummary = useCallback(
     (result: QuizResultType) => {
@@ -237,6 +303,9 @@ export function QuizForm({ variationKey }: QuizFormProps) {
 
       const summary = buildAnswerSummary(answers);
       const payload = {
+        name: contactData.name,
+        email: contactData.email,
+        phone: contactData.phone,
         summary,
         resultType: result,
         resultLabel: resultTypeLabels[result],
@@ -251,38 +320,83 @@ export function QuizForm({ variationKey }: QuizFormProps) {
         // ignore storage errors
       }
     },
-    [answers, variationKey, variation.utmValue]
+    [answers, contactData, variationKey, variation.utmValue]
   );
 
   useEffect(() => {
-    if (!showResult || !resultType) return;
+    if (!showResult) return;
 
-    persistQuizSummary(resultType);
-
-    if (resultType === 'triad') {
-      router.push(`/jejum-hormonal?var=${variation.utmValue}`);
-    } else if (resultType === 'lipedema') {
-      router.push(`/lipedema?var=${variation.utmValue}`);
+    // Calcula o tipo de resultado
+    const calculatedResultType = getResultType(answers);
+    
+    if (!calculatedResultType) {
+      console.error('Tipo de resultado não encontrado');
+      return;
     }
-  }, [showResult, resultType, router, variation.utmValue, persistQuizSummary]);
 
-  const handleNext = () => {
-    if (!currentQuestion) {
+    // Redireciona após um pequeno delay para mostrar a mensagem
+    const redirectTimer = setTimeout(() => {
+      const url = calculatedResultType === 'triad' 
+        ? `/jejum-hormonal?var=${variation.utmValue}`
+        : `/lipedema?var=${variation.utmValue}`;
+      
+      router.push(url);
+    }, 1000);
+
+    return () => clearTimeout(redirectTimer);
+  }, [showResult, answers, router, variation.utmValue]);
+
+  const handleNext = async () => {
+    // Se está no step de contato, processa o resultado
+    if (isContactStep) {
+      if (!isContactFormValid) {
+        return; // Não prossegue se os dados não são válidos
+      }
+      
+      // Determina o tipo de resultado antes de mostrar
+      const result = getResultType(answers);
+      
+      // Salva no sessionStorage
+      persistQuizSummary(result);
+      
+      // Envia os dados para o Google Sheets e aguarda
+      try {
+        await sendToGoogleSheets(result);
+        console.log('✅ Dados enviados, redirecionando...');
+      } catch (error) {
+        console.error('⚠️ Erro ao enviar para Google Sheets (continuando mesmo assim):', error);
+      }
+      
+      // Mostra o resultado e inicia o redirecionamento
+      setShowResult(true);
+      return;
+    }
+
+    // Se está na tela inicial (welcome), vai para a primeira pergunta
+    if (stepIndex === 0) {
       setStepIndex(1);
       return;
     }
 
-    const response = answers[currentQuestion.id];
-    if (!response || (Array.isArray(response) && response.length === 0)) {
-      return;
-    }
+    // Se está em uma pergunta, valida a resposta
+    if (currentQuestion) {
+      const response = answers[currentQuestion.id];
+      if (!response || (Array.isArray(response) && response.length === 0)) {
+        return;
+      }
 
-    if (stepIndex < questions.length) {
-      setStepIndex((prev) => prev + 1);
-      return;
-    }
+      // Se não é a última pergunta, vai para a próxima
+      if (stepIndex < questions.length) {
+        setStepIndex((prev) => prev + 1);
+        return;
+      }
 
-    setShowResult(true);
+      // Se é a última pergunta, vai para o step de contato
+      if (stepIndex === questions.length) {
+        setStepIndex((prev) => prev + 1);
+        return;
+      }
+    }
   };
 
   const handleOptionChange = (question: QuizQuestion, option: QuizOption) => {
@@ -304,6 +418,11 @@ export function QuizForm({ variationKey }: QuizFormProps) {
     setStepIndex(0);
     setAnswers({});
     setShowResult(false);
+    setContactData({ name: '', email: '', phone: '' });
+  };
+
+  const handleContactChange = (field: keyof ContactData, value: string) => {
+    setContactData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -317,7 +436,7 @@ export function QuizForm({ variationKey }: QuizFormProps) {
       </div>
 
       {!showResult ? (
-        <div key={currentQuestion?.id ?? 'welcome'} className={styles.stepCard}>
+        <div key={currentQuestion?.id ?? (isContactStep ? 'contact' : 'welcome')} className={styles.stepCard}>
           {stepIndex === 0 && (
             <header className={styles.welcomeHeader}>
               <p className={styles.welcomeBadge}>Comece agora</p>
@@ -332,7 +451,80 @@ export function QuizForm({ variationKey }: QuizFormProps) {
             </header>
           )}
 
-          {stepIndex > 0 && currentQuestion && (
+          {isContactStep && (
+            <>
+              <header className={styles.questionHeader}>
+                <p className={styles.questionCounter}>Último passo</p>
+                <h2 className={styles.questionTitle}>Preencha seus dados para receber o resultado</h2>
+                <p className={styles.questionDescription}>
+                  Seus dados estão seguros e serão usados apenas para enviar o resultado personalizado.
+                </p>
+              </header>
+              <div className={styles.contactForm}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="name" className={styles.formLabel}>
+                    Nome completo *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    className={styles.formInput}
+                    value={contactData.name}
+                    onChange={(e) => handleContactChange('name', e.target.value)}
+                    placeholder="Seu nome"
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="email" className={styles.formLabel}>
+                    E-mail *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    className={styles.formInput}
+                    value={contactData.email}
+                    onChange={(e) => handleContactChange('email', e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="phone" className={styles.formLabel}>
+                    WhatsApp *
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    className={styles.formInput}
+                    value={contactData.phone}
+                    onChange={(e) => handleContactChange('phone', e.target.value)}
+                    placeholder="(00) 00000-0000"
+                    required
+                  />
+                </div>
+              </div>
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setStepIndex((prev) => prev - 1)}
+                >
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={handleNext}
+                  disabled={!isContactFormValid || isSubmitting}
+                >
+                  {isSubmitting ? 'Enviando...' : 'Ver resultado'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {stepIndex > 0 && stepIndex <= questions.length && currentQuestion && (
             <>
               <header className={styles.questionHeader}>
                 <p className={styles.questionCounter}>
@@ -377,7 +569,7 @@ export function QuizForm({ variationKey }: QuizFormProps) {
                   onClick={handleNext}
                   disabled={isNextDisabled}
                 >
-                  {stepIndex === questions.length ? 'Ver resultado' : 'Continuar'}
+                  Continuar
                 </button>
               </div>
             </>

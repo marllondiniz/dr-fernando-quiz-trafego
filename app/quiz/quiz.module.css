@@ -578,3 +578,63 @@
     font-size: 1.25rem;
   }
 }
+
+/* Contact Form Styles */
+.contactForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formLabel {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.formInput {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  border: 2px solid rgba(255, 129, 115, 0.2);
+  border-radius: 12px;
+  background: white;
+  color: var(--color-text);
+  transition: var(--transition);
+  font-family: inherit;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(255, 129, 115, 0.1);
+}
+
+.formInput::placeholder {
+  color: var(--color-text-soft);
+  opacity: 0.6;
+}
+
+.formInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .contactForm {
+    gap: 1.25rem;
+  }
+
+  .formInput {
+    padding: 0.875rem 1rem;
+    font-size: 0.9375rem;
+  }
+}
