@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useEffect, useState, useRef } from 'react';
 import { useWhatsappLink } from '../hooks/useWhatsappLink';
 import { VTurbPlayerLipedema } from './VTurbPlayerLipedema';
+import { VTurbPlayerResults } from './VTurbPlayerResults';
 import styles from './page.module.css';
 
 export function LipedemaClient() {
@@ -137,6 +138,36 @@ export function LipedemaClient() {
         </Link>
       </section>
 
+      {/* Authority Section */}
+      <section className={`${styles.section} ${styles.authoritySection}`}>
+        <div className={styles.authorityContent}>
+          <div className={styles.authorityImageWrapper}>
+            <Image
+              src="/Fernando Del Piero.png"
+              alt="Dr. Fernando Del Piero"
+              width={300}
+              height={400}
+              className={styles.authorityImage}
+              unoptimized
+            />
+          </div>
+          <div className={styles.authorityText}>
+            <h2 className={styles.authorityName}>Dr. Fernando Del Piero</h2>
+            <div className={styles.authorityDescription}>
+              <p className={styles.authorityParagraph}>
+                Médico há <strong>12 anos</strong> — referência em emagrecimento feminino 40+.
+              </p>
+              <p className={styles.authorityParagraph}>
+                Mais de <strong>10 mil mulheres</strong> acompanhadas presencial e online.
+              </p>
+              <p className={styles.authorityParagraph}>
+                Protocolos baseados em <strong>ciência</strong>. Desenhados para o <strong>metabolismo da mulher</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Results Gallery */}
       <section className={`${styles.section} ${styles.resultsGallery}`}>
         <h2 className={styles.sectionTitle}>
@@ -232,6 +263,11 @@ export function LipedemaClient() {
               />
             ))}
           </div>
+        </div>
+
+        {/* Video Section */}
+        <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'center' }}>
+          <VTurbPlayerResults />
         </div>
       </section>
 
