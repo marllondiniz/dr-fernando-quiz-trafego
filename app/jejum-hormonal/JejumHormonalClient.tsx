@@ -1,32 +1,24 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState, useRef } from 'react';
 import { useWhatsappLink } from '../hooks/useWhatsappLink';
 import { VTurbPlayerJejum } from './VTurbPlayerJejum';
+import { VTurbPlayerJejum1 } from './VTurbPlayerJejum1';
+import { VTurbPlayerJejum2 } from './VTurbPlayerJejum2';
+import { VTurbPlayerJejum3 } from './VTurbPlayerJejum3';
 import styles from './page.module.css';
 
 export function JejumHormonalClient() {
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [currentDeliverable, setCurrentDeliverable] = useState(0);
+  const [currentVideo, setCurrentVideo] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const videosCarouselRef = useRef<HTMLDivElement>(null);
   const whatsappLink = useWhatsappLink(
     'Olá! Quero falar com a equipe do Dr. Fernando.',
     'Olá! Acabei de fazer o quiz e recebi o resultado Mulher 40+ / Tríade. Quero saber como funciona o Jejum Hormonal.'
   );
-
-  const testimonials = [
-    {
-      text: 'Barriga desinchou em 3 semanas. Energia e libido voltaram.',
-      author: 'Carla, 47 anos',
-      rating: 5,
-    },
-    {
-      text: 'Eu achava que era preguiça. Era hormônio.',
-      author: 'Renata, 52 anos',
-      rating: 5,
-    },
-  ];
 
   const benefits = [
     {
@@ -99,16 +91,6 @@ export function JejumHormonalClient() {
   ];
 
   useEffect(() => {
-    const testimonialInterval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 4000);
-
-    return () => {
-      clearInterval(testimonialInterval);
-    };
-  }, [testimonials.length]);
-
-  useEffect(() => {
     const carousel = carouselRef.current;
     if (!carousel) return;
 
@@ -133,6 +115,32 @@ export function JejumHormonalClient() {
       behavior: 'smooth',
     });
   }, [currentDeliverable]);
+
+  useEffect(() => {
+    const carousel = videosCarouselRef.current;
+    if (!carousel) return;
+
+    const handleScroll = () => {
+      const scrollLeft = carousel.scrollLeft;
+      const cardWidth = carousel.clientWidth;
+      const currentIndex = Math.round(scrollLeft / cardWidth);
+      setCurrentVideo(currentIndex);
+    };
+
+    carousel.addEventListener('scroll', handleScroll);
+    return () => carousel.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const carousel = videosCarouselRef.current;
+    if (!carousel) return;
+
+    const cardWidth = carousel.clientWidth;
+    carousel.scrollTo({
+      left: currentVideo * cardWidth,
+      behavior: 'smooth',
+    });
+  }, [currentVideo]);
 
 
   return (
@@ -160,6 +168,70 @@ export function JejumHormonalClient() {
           </div>
           <span className={styles.ctaSubtext}>Atendimento personalizado • Sem compromisso</span>
         </Link>
+      </section>
+
+      {/* Authority Section */}
+      <section className={`${styles.section} ${styles.authoritySection}`}>
+        <div className={styles.authorityContent}>
+          <div className={styles.authorityImageWrapper}>
+            <Image
+              src="/Fernando Del Piero.png"
+              alt="Dr. Fernando Del Piero"
+              width={300}
+              height={400}
+              className={styles.authorityImage}
+              unoptimized
+            />
+          </div>
+          <div className={styles.authorityText}>
+            <h2 className={styles.authorityName}>Dr. Fernando Del Piero</h2>
+            <div className={styles.authorityDescription}>
+              <p className={styles.authorityParagraph}>
+                Médico há <strong>12 anos</strong> — referência em emagrecimento feminino 40+.
+              </p>
+              <p className={styles.authorityParagraph}>
+                Mais de <strong>10 mil mulheres</strong> acompanhadas presencial e online.
+              </p>
+              <p className={styles.authorityParagraph}>
+                Protocolos baseados em <strong>ciência</strong>. Desenhados para o <strong>metabolismo da mulher</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Videos Section - Below VSL */}
+      <section className={`${styles.section} ${styles.videosSection}`} style={{ padding: '3rem 0' }}>
+        <h2 className={styles.sectionTitle}>
+          Veja <span className={styles.highlight}>resultados reais</span> de mulheres que transformaram o corpo
+        </h2>
+        <div className={styles.videosCarouselWrapper}>
+          <div
+            ref={videosCarouselRef}
+            className={styles.videosCarousel}
+          >
+            <div className={styles.videoCarouselItem}>
+              <VTurbPlayerJejum1 />
+            </div>
+            <div className={styles.videoCarouselItem}>
+              <VTurbPlayerJejum2 />
+            </div>
+            <div className={styles.videoCarouselItem}>
+              <VTurbPlayerJejum3 />
+            </div>
+          </div>
+          
+          <div className={styles.carouselDots}>
+            {[0, 1, 2].map((index) => (
+              <button
+                key={index}
+                className={`${styles.dot} ${index === currentVideo ? styles.activeDot : ''}`}
+                onClick={() => setCurrentVideo(index)}
+                aria-label={`Ir para vídeo ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Hero Section */}
@@ -245,66 +317,6 @@ export function JejumHormonalClient() {
         </div>
       </section>
 
-      {/* Testimonials Carousel */}
-      <section className={`${styles.section} ${styles.testimonials}`}>
-        <h2 className={styles.sectionTitle}>
-          Elas pararam de se culpar.
-          <br />
-          <span className={styles.highlight}>E começaram a reprogramar o corpo.</span>
-        </h2>
-        
-        <div className={styles.carouselWrapper}>
-          <div className={styles.carousel}>
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className={`${styles.testimonialCard} ${
-                  index === currentTestimonial ? styles.active : ''
-                }`}
-              >
-                <div className={styles.stars}>
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <svg key={i} viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className={styles.testimonialText}>{testimonial.text}</p>
-                <cite className={styles.testimonialAuthor}>— {testimonial.author}</cite>
-              </div>
-            ))}
-          </div>
-          
-          <div className={styles.carouselDots}>
-            {testimonials.map((_, index) => (
-              <button
-                key={index}
-                className={`${styles.dot} ${index === currentTestimonial ? styles.activeDot : ''}`}
-                onClick={() => setCurrentTestimonial(index)}
-                aria-label={`Ir para depoimento ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Authority Card */}
-        <div className={styles.authorityCard}>
-          <div className={styles.authorityIcon}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <h3 className={styles.authorityTitle}>Dr. Fernando Del Piero</h3>
-          <p className={styles.authorityRole}>
-            Médico há 12 anos — referência em emagrecimento feminino 40+.
-            <br />
-            Mais de 10 mil mulheres acompanhadas presencial e online.
-            <br />
-            Protocolos baseados em ciência. Desenhados para o metabolismo da mulher.
-          </p>
-        </div>
-      </section>
-
       {/* Deliverables */}
       <section className={`${styles.section} ${styles.deliverables}`}>
         <h2 className={styles.sectionTitle}>
@@ -375,16 +387,7 @@ export function JejumHormonalClient() {
           Eu quero que você recupere sua confiança.
         </h2>
         <p className={styles.heroDescription}>
-          O problema nunca foi você.
-          <br />
-          Foram os métodos errados que você tentou.
-          <br />
-          Quando você respeita seus hormônios...
-          <br />
-          o corpo para de resistir e começa a colaborar.
-        </p>
-        <p className={styles.heroDescription}>
-          E quando isso acontece, tudo muda:
+          Quando você respeita seus hormônios, tudo muda:
         </p>
         <div className={styles.benefitsSteps}>
           {benefits.map((benefit, index) => (

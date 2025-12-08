@@ -1,42 +1,22 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState, useRef } from 'react';
 import { useWhatsappLink } from '../hooks/useWhatsappLink';
 import { VTurbPlayerLipedema } from './VTurbPlayerLipedema';
+import { VTurbPlayerResults } from './VTurbPlayerResults';
 import styles from './page.module.css';
 
 export function LipedemaClient() {
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [currentDeliverable, setCurrentDeliverable] = useState(0);
+  const [currentGalleryImage, setCurrentGalleryImage] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const galleryCarouselRef = useRef<HTMLDivElement>(null);
   const whatsappLink = useWhatsappLink(
     'Olá! Quero falar com a equipe do Dr. Fernando.',
     'Olá! Acabei de fazer o quiz e recebi indícios de Lipedema. Preciso de orientação personalizada.'
   );
-
-  const testimonials = [
-    {
-      text: 'Minhas pernas desincharam. Perdi 7kg. O melhor? A dor sumiu.',
-      author: 'Márcia, 45 anos',
-      rating: 5,
-    },
-    {
-      text: 'Achei que era preguiça. Era lipedema.',
-      author: 'Fernanda, 38 anos',
-      rating: 5,
-    },
-    {
-      text: 'Recuperei minha autoestima. Não foi só o volume.',
-      author: 'Cláudia, 42 anos',
-      rating: 5,
-    },
-    {
-      text: 'Finalmente entendi por que nenhuma dieta funcionava.',
-      author: 'Roberta, 51 anos',
-      rating: 5,
-    },
-  ];
 
   const causes = [
     { title: 'Estrogênio em excesso', description: 'Desequilíbrio hormonal' },
@@ -80,16 +60,6 @@ export function LipedemaClient() {
   ];
 
   useEffect(() => {
-    const testimonialInterval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 4000);
-
-    return () => {
-      clearInterval(testimonialInterval);
-    };
-  }, [testimonials.length]);
-
-  useEffect(() => {
     const carousel = carouselRef.current;
     if (!carousel) return;
 
@@ -114,6 +84,32 @@ export function LipedemaClient() {
       behavior: 'smooth',
     });
   }, [currentDeliverable]);
+
+  useEffect(() => {
+    const carousel = galleryCarouselRef.current;
+    if (!carousel) return;
+
+    const handleScroll = () => {
+      const scrollLeft = carousel.scrollLeft;
+      const cardWidth = carousel.clientWidth;
+      const currentIndex = Math.round(scrollLeft / cardWidth);
+      setCurrentGalleryImage(currentIndex);
+    };
+
+    carousel.addEventListener('scroll', handleScroll);
+    return () => carousel.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const carousel = galleryCarouselRef.current;
+    if (!carousel) return;
+
+    const cardWidth = carousel.clientWidth;
+    carousel.scrollTo({
+      left: currentGalleryImage * cardWidth,
+      behavior: 'smooth',
+    });
+  }, [currentGalleryImage]);
 
   return (
     <main className={styles.page}>
@@ -140,6 +136,139 @@ export function LipedemaClient() {
           </div>
           <span className={styles.ctaSubtext}>Atendimento personalizado • Sem compromisso</span>
         </Link>
+      </section>
+
+      {/* Authority Section */}
+      <section className={`${styles.section} ${styles.authoritySection}`}>
+        <div className={styles.authorityContent}>
+          <div className={styles.authorityImageWrapper}>
+            <Image
+              src="/Fernando Del Piero.png"
+              alt="Dr. Fernando Del Piero"
+              width={300}
+              height={400}
+              className={styles.authorityImage}
+              unoptimized
+            />
+          </div>
+          <div className={styles.authorityText}>
+            <h2 className={styles.authorityName}>Dr. Fernando Del Piero</h2>
+            <div className={styles.authorityDescription}>
+              <p className={styles.authorityParagraph}>
+                Médico há <strong>12 anos</strong> — referência em emagrecimento feminino 40+.
+              </p>
+              <p className={styles.authorityParagraph}>
+                Mais de <strong>10 mil mulheres</strong> acompanhadas presencial e online.
+              </p>
+              <p className={styles.authorityParagraph}>
+                Protocolos baseados em <strong>ciência</strong>. Desenhados para o <strong>metabolismo da mulher</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Results Gallery */}
+      <section className={`${styles.section} ${styles.resultsGallery}`}>
+        <h2 className={styles.sectionTitle}>
+          Resultados <span className={styles.highlight}>comprovados.</span>
+          <br />
+          O método <span className={styles.highlightAlt}>funciona.</span>
+        </h2>
+        <p className={styles.description}>
+          Veja a transformação real de mulheres que receberam <strong>tratamento especializado</strong> para Lipedema.
+        </p>
+        
+        {/* Gallery Grid Desktop */}
+        <div className={styles.galleryGrid}>
+          <div className={styles.galleryItem}>
+            <Image
+              src="/lipedema1.png"
+              alt="Resultado do tratamento de Lipedema - Caso 1"
+              width={600}
+              height={800}
+              className={styles.galleryImage}
+              priority
+              unoptimized
+            />
+          </div>
+          <div className={styles.galleryItem}>
+            <Image
+              src="/lipedema2.png"
+              alt="Resultado do tratamento de Lipedema - Caso 2"
+              width={600}
+              height={800}
+              className={styles.galleryImage}
+              unoptimized
+            />
+          </div>
+          <div className={styles.galleryItem}>
+            <Image
+              src="/lipedema3.png"
+              alt="Resultado do tratamento de Lipedema - Caso 3"
+              width={600}
+              height={800}
+              className={styles.galleryImage}
+              unoptimized
+            />
+          </div>
+        </div>
+
+        {/* Gallery Carousel Mobile */}
+        <div className={styles.galleryCarouselWrapper}>
+          <div
+            ref={galleryCarouselRef}
+            className={styles.galleryCarousel}
+          >
+            <div className={styles.galleryItemCarousel}>
+              <Image
+                src="/lipedema1.png"
+                alt="Resultado do tratamento de Lipedema - Caso 1"
+                width={600}
+                height={800}
+                className={styles.galleryImage}
+                priority
+                unoptimized
+              />
+            </div>
+            <div className={styles.galleryItemCarousel}>
+              <Image
+                src="/lipedema2.png"
+                alt="Resultado do tratamento de Lipedema - Caso 2"
+                width={600}
+                height={800}
+                className={styles.galleryImage}
+                unoptimized
+              />
+            </div>
+            <div className={styles.galleryItemCarousel}>
+              <Image
+                src="/lipedema3.png"
+                alt="Resultado do tratamento de Lipedema - Caso 3"
+                width={600}
+                height={800}
+                className={styles.galleryImage}
+                unoptimized
+              />
+            </div>
+          </div>
+          
+          <div className={styles.carouselDots}>
+            {[0, 1, 2].map((index) => (
+              <button
+                key={index}
+                className={`${styles.dot} ${index === currentGalleryImage ? styles.activeDot : ''}`}
+                onClick={() => setCurrentGalleryImage(index)}
+                aria-label={`Ir para imagem ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Video Section */}
+        <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'center' }}>
+          <VTurbPlayerResults />
+        </div>
       </section>
 
       {/* Hero Section */}
@@ -254,9 +383,9 @@ export function LipedemaClient() {
       {/* Deliverables */}
       <section className={`${styles.section} ${styles.deliverables}`}>
         <h2 className={styles.sectionTitle}>
-          O que você recebe no <span className={styles.highlightAlt}>Protocolo Jejum Hormonal®</span>
+          O que você recebe no <span className={styles.highlightAlt}>Protocolo de Tratamento</span>
           <br />
-          Edição Lipedema
+          para Lipedema
         </h2>
         
         <div className={styles.cardsGrid}>
@@ -312,47 +441,6 @@ export function LipedemaClient() {
                 className={`${styles.dot} ${index === currentDeliverable ? styles.activeDot : ''}`}
                 onClick={() => setCurrentDeliverable(index)}
                 aria-label={`Ir para card ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Carousel */}
-      <section className={`${styles.section} ${styles.testimonials}`}>
-        <h2 className={styles.sectionTitle}>
-          Resultados <span className={styles.highlight}>reais.</span> Mulheres <span className={styles.highlight}>reais.</span>
-        </h2>
-        
-        <div className={styles.carouselWrapper}>
-          <div className={styles.carousel}>
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className={`${styles.testimonialCard} ${
-                  index === currentTestimonial ? styles.active : ''
-                }`}
-              >
-                <div className={styles.stars}>
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <svg key={i} viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className={styles.testimonialText}>{testimonial.text}</p>
-                <cite className={styles.testimonialAuthor}>— {testimonial.author}</cite>
-              </div>
-            ))}
-          </div>
-          
-          <div className={styles.carouselDots}>
-            {testimonials.map((_, index) => (
-              <button
-                key={index}
-                className={`${styles.dot} ${index === currentTestimonial ? styles.activeDot : ''}`}
-                onClick={() => setCurrentTestimonial(index)}
-                aria-label={`Ir para depoimento ${index + 1}`}
               />
             ))}
           </div>

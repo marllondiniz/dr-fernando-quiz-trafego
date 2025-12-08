@@ -1,15 +1,46 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useWhatsappLink } from './hooks/useWhatsappLink';
+import { VTurbPlayerJejum1 } from './jejum-hormonal/VTurbPlayerJejum1';
+import { VTurbPlayerJejum2 } from './jejum-hormonal/VTurbPlayerJejum2';
+import { VTurbPlayerJejum3 } from './jejum-hormonal/VTurbPlayerJejum3';
 import styles from './page.module.css';
 
 export function HomeClient() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [currentVideo, setCurrentVideo] = useState(0);
+  const videoCarouselRef = useRef<HTMLDivElement>(null);
   const whatsappLink = useWhatsappLink(
     'Olá! Quero falar com a equipe do Dr. Fernando sobre a Consulta de Análise Metabólica.'
   );
+
+  useEffect(() => {
+    const carousel = videoCarouselRef.current;
+    if (!carousel) return;
+
+    const handleScroll = () => {
+      const scrollLeft = carousel.scrollLeft;
+      const cardWidth = carousel.clientWidth;
+      const currentIndex = Math.round(scrollLeft / cardWidth);
+      setCurrentVideo(currentIndex);
+    };
+
+    carousel.addEventListener('scroll', handleScroll);
+    return () => carousel.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const carousel = videoCarouselRef.current;
+    if (!carousel) return;
+
+    const cardWidth = carousel.clientWidth;
+    carousel.scrollTo({
+      left: currentVideo * cardWidth,
+      behavior: 'smooth',
+    });
+  }, [currentVideo]);
 
   const testimonials = [
     {
@@ -34,12 +65,6 @@ export function HomeClient() {
     },
   ];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [testimonials.length]);
 
   return (
     <main className={styles.homePage}>
@@ -310,6 +335,58 @@ export function HomeClient() {
                 className={`${styles.dot} ${index === currentTestimonial ? styles.activeDot : ''}`}
                 onClick={() => setCurrentTestimonial(index)}
                 aria-label={`Ir para depoimento ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Videos Section */}
+      <section className={styles.sectionVideos}>
+        <h2 className={styles.sectionTitle}>
+          Veja <span className={styles.highlight}>resultados reais</span> de mulheres que transformaram o corpo
+        </h2>
+        
+        {/* Videos Grid Desktop */}
+        <div className={styles.videosGrid}>
+          <VTurbPlayerJejum1 />
+          <VTurbPlayerJejum2 />
+          <VTurbPlayerJejum3 />
+        </div>
+
+        {/* Videos Carousel Mobile */}
+        <div className={styles.videosCarouselWrapper}>
+          <div
+            ref={videoCarouselRef}
+            className={styles.videosCarousel}
+          >
+            <div className={styles.videoCarouselItem}>
+              <VTurbPlayerJejum1 />
+            </div>
+            <div className={styles.videoCarouselItem}>
+              <VTurbPlayerJejum2 />
+            </div>
+            <div className={styles.videoCarouselItem}>
+              <VTurbPlayerJejum3 />
+            </div>
+          </div>
+          
+          <div className={styles.carouselDots}>
+            {[0, 1, 2].map((index) => (
+              <button
+                key={index}
+                className={`${styles.dot} ${index === currentVideo ? styles.activeDot : ''}`}
+                onClick={() => {
+                  setCurrentVideo(index);
+                  if (videoCarouselRef.current) {
+                    const cardWidth = videoCarouselRef.current.clientWidth;
+                    videoCarouselRef.current.scrollTo({
+                      left: index * cardWidth,
+                      behavior: 'smooth',
+                    });
+                  }
+                }}
+                aria-label={`Ir para vídeo ${index + 1}`}
               />
             ))}
           </div>
