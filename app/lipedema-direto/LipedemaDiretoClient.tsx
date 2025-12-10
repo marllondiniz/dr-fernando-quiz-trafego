@@ -114,11 +114,6 @@ export function LipedemaDiretoClient() {
     <main className={styles.page}>
       {/* VSL Section */}
       <section id="video" className={`${styles.section} ${styles.vsl}`}>
-        <h2 className={styles.sectionTitle}>
-          Antes de tentar <span className={styles.highlight}>lipo, drenagem ou remédio…</span>
-          <br />
-          Assista isso agora.
-        </h2>
         <div className={styles.videoWrapper}>
           <VTurbPlayerLipedema />
         </div>

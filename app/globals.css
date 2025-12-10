@@ -80,3 +80,19 @@ button {
     transform: translateY(0);
   }
 }
+
+/* Remover bordas e sombras dos players VTurb */
+vturb-smartplayer {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.videoWrapper vturb-smartplayer,
+.videoCarouselItem vturb-smartplayer {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}

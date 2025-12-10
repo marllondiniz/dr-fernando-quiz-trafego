@@ -146,11 +146,6 @@ export function JejumHormonalDiretoClient() {
     <main className={styles.page}>
       {/* VSL Section */}
       <section id="video" className={`${styles.section} ${styles.vsl}`}>
-        <h2 className={styles.sectionTitle}>
-          Antes de culpar seu corpo ou tentar mais uma dieta,
-          <br />
-          <span className={styles.highlight}>assista isso.</span>
-        </h2>
         <div className={styles.videoWrapper}>
           <VTurbPlayerJejum />
         </div>

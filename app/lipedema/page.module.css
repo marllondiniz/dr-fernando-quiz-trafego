@@ -321,9 +321,7 @@
   max-width: 800px;
   margin: 2rem auto;
   aspect-ratio: 16 / 9;
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-medium);
 }
 
 /* YouTube Video Section */
