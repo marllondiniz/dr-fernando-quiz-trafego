@@ -371,62 +371,83 @@ async function processWebhook(body: TintimWebhookPayload) {
     }
 
     // Extrair dados de forma flexível (o Tintim pode enviar em diferentes formatos)
-    // Tentar diferentes possíveis estruturas do payload
-    let phone = body.contact?.phone || 
-                  (body as any).phone || 
-                  (body as any).from || 
-                  (body as any).sender?.phone ||
-                  (body as any).conversation?.contact?.phone ||
-                  (body as any).conversation?.phone ||
-                  (body as any).contact_phone ||
-                  (body as any).whatsapp_number ||
-                  (body as any).wa_id ||
-                  (body as any).message?.from ||
-                  (body as any).message?.contact?.phone ||
-                  (body as any).data?.phone ||
-                  (body as any).data?.contact?.phone;
+    // PRIORIZAR estrutura real do Tintim: lead.phone, lead.name, message como string direta
+    const bodyAny = body as any;
     
-    let name = body.contact?.name || 
-                 (body as any).name || 
-                 (body as any).sender?.name ||
-                 (body as any).conversation?.contact?.name ||
-                 (body as any).conversation?.name ||
-                 (body as any).contact_name ||
-                 (body as any).message?.contact?.name ||
-                 (body as any).data?.name ||
-                 (body as any).data?.contact?.name;
+    // Extrair telefone - PRIORIZAR lead.phone e lead.phone_e164
+    let phone = bodyAny.lead?.phone || 
+                (bodyAny.lead?.phone_e164?.replace(/\+/g, '') || null) ||
+                body.contact?.phone || 
+                bodyAny.phone || 
+                bodyAny.from || 
+                bodyAny.sender?.phone ||
+                bodyAny.conversation?.contact?.phone ||
+                bodyAny.conversation?.phone ||
+                bodyAny.contact_phone ||
+                bodyAny.whatsapp_number ||
+                bodyAny.wa_id ||
+                bodyAny.message?.from ||
+                bodyAny.message?.contact?.phone ||
+                bodyAny.data?.phone ||
+                bodyAny.data?.contact?.phone;
     
-    const messageText = body.message?.text || 
-                        (body as any).text || 
-                        (body as any).message?.body ||
-                        (body as any).body ||
-                        (body as any).content ||
-                        (body as any).message?.content ||
-                        (body as any).data?.message ||
-                        (body as any).data?.text;
+    // Extrair nome - PRIORIZAR lead.name
+    let name = bodyAny.lead?.name || 
+               body.contact?.name || 
+               bodyAny.name || 
+               bodyAny.sender?.name ||
+               bodyAny.conversation?.contact?.name ||
+               bodyAny.conversation?.name ||
+               bodyAny.contact_name ||
+               bodyAny.message?.contact?.name ||
+               bodyAny.data?.name ||
+               bodyAny.data?.contact?.name;
     
-    const linkId = body.link_id || 
-                   (body as any).linkId || 
-                   (body as any).link_id ||
-                   (body as any).conversation?.link_id ||
-                   (body as any).conversation?.linkId ||
-                   (body as any).link ||
-                   (body as any).data?.link_id;
+    // Extrair mensagem - PRIORIZAR message como string direta (estrutura real do Tintim)
+    const messageText = (typeof bodyAny.message === 'string' ? bodyAny.message : null) ||
+                        body.message?.text || 
+                        bodyAny.text || 
+                        bodyAny.message?.body ||
+                        bodyAny.body ||
+                        bodyAny.content ||
+                        bodyAny.message?.content ||
+                        bodyAny.data?.message ||
+                        bodyAny.data?.text;
+    
+    // Extrair linkId - tentar mapear visit.name para linkId conhecido
+    let linkId = body.link_id || 
+                 bodyAny.linkId || 
+                 bodyAny.link_id ||
+                 bodyAny.conversation?.link_id ||
+                 bodyAny.conversation?.linkId ||
+                 bodyAny.link ||
+                 bodyAny.data?.link_id;
+    
+    // Mapear visit.name para linkId conhecido (ex: "lipedema (quiz)" -> linkId do quiz)
+    const visitName = bodyAny.lead?.visit?.name;
+    if (!linkId && visitName) {
+      // Mapear nomes de visitas conhecidas para linkIds
+      const visitNameToLinkId: Record<string, string> = {
+        'lipedema (quiz)': '855a2f73-2af0-445f-aaa2-6e5d42a4a6bf',
+        // Adicionar outros mapeamentos conforme necessário
+      };
+      linkId = visitNameToLinkId[visitName.toLowerCase()] || linkId;
+    }
 
-    // Extrair UTMs do payload
+    // Extrair UTMs do payload - PRIORIZAR lead.utm_*
     let utms = {
-      utm_source: body.utm_source || (body as any).utmSource || (body as any).utm_source,
-      utm_medium: body.utm_medium || (body as any).utmMedium || (body as any).utm_medium,
-      utm_campaign: body.utm_campaign || (body as any).utmCampaign || (body as any).utm_campaign,
-      utm_term: body.utm_term || (body as any).utmTerm || (body as any).utm_term,
-      utm_content: body.utm_content || (body as any).utmContent || (body as any).utm_content,
-      fbclid: body.fbclid || (body as any).fbclid,
-      gclid: body.gclid || (body as any).gclid,
+      utm_source: bodyAny.lead?.utm_source || body.utm_source || bodyAny.utmSource || bodyAny.utm_source,
+      utm_medium: bodyAny.lead?.utm_medium || body.utm_medium || bodyAny.utmMedium || bodyAny.utm_medium,
+      utm_campaign: bodyAny.lead?.utm_campaign || body.utm_campaign || bodyAny.utmCampaign || bodyAny.utm_campaign,
+      utm_term: bodyAny.lead?.utm_term || body.utm_term || bodyAny.utmTerm || bodyAny.utm_term,
+      utm_content: bodyAny.lead?.utm_content || body.utm_content || bodyAny.utmContent || bodyAny.utm_content,
+      fbclid: bodyAny.lead?.fbclid || body.fbclid || bodyAny.fbclid,
+      gclid: bodyAny.lead?.gclid || body.gclid || bodyAny.gclid,
     };
 
     // Se não tiver UTMs no payload, tentar extrair da URL de referência
-    if (!utms.utm_source && (body.referrer || body.source_url || (body as any).referrer || (body as any).sourceUrl)) {
-      const referrerUrl = body.referrer || body.source_url || (body as any).referrer || (body as any).sourceUrl;
+    if (!utms.utm_source && (body.referrer || body.source_url || bodyAny.referrer || bodyAny.sourceUrl)) {
+      const referrerUrl = body.referrer || body.source_url || bodyAny.referrer || bodyAny.sourceUrl;
       const utmsFromUrl = extractUTMsFromUrl(referrerUrl);
       utms = { ...utms, ...utmsFromUrl };
     }
@@ -435,11 +456,14 @@ async function processWebhook(body: TintimWebhookPayload) {
     const cacheKey = linkId || phone || 'unknown';
     
     // Verificar se é um evento de mensagem enviada (não apenas recebida)
-    const isMessageSent = body.event === 'message_sent' || 
+    // PRIORIZAR from_me (estrutura real do Tintim)
+    const isMessageSent = bodyAny.from_me === true ||
+                         body.event === 'message_sent' || 
                          body.event === 'sent' || 
-                         (body as any).type === 'sent' ||
-                         (body as any).direction === 'outbound' ||
-                         (body as any).direction === 'outgoing';
+                         bodyAny.type === 'sent' ||
+                         bodyAny.direction === 'outbound' ||
+                         bodyAny.direction === 'outgoing' ||
+                         bodyAny.event_type === 'message.sent';
 
     console.log('🔍 Tipo de evento detectado:', {
       event: body.event,
