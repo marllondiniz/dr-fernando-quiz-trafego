@@ -41,6 +41,7 @@ async function getSheetId(
 export async function POST(request: NextRequest) {
   try {
     const body: QuizSubmitPayload = await request.json();
+    console.log('body aqui teste euuuuuuuuu', body);
     console.log('📥 Recebendo dados do quiz:', { 
       name: body.name, 
       email: body.email, 

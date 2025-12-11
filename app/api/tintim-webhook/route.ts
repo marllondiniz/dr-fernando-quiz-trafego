@@ -33,6 +33,25 @@ interface TintimWebhookPayload {
 }
 
 /**
+ * Interface para dados de conversa armazenados no cache
+ */
+interface ConversationCache {
+  phone: string;
+  name?: string;
+  linkId?: string;
+  utms?: {
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
+    fbclid?: string;
+    gclid?: string;
+  };
+  timestamp: number;
+}
+
+/**
  * Mapeamento de link_id para funnel
  */
 const FUNNEL_MAP: Record<string, string> = {
@@ -41,6 +60,27 @@ const FUNNEL_MAP: Record<string, string> = {
   '49a1ace3-3239-4e38-b9a9-95009cf50efd': 'jejum-hormonal',
   '86f4d522-0c48-4f0e-a861-83d7d89de2a0': 'jejum-hormonal-direto',
 };
+
+/**
+ * Cache em memória para armazenar dados de conversas
+ * Chave: link_id (ou 'unknown' se não houver)
+ * Valor: dados da conversa
+ * Expira após 1 hora (3600000ms)
+ */
+const conversationCache = new Map<string, ConversationCache>();
+const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hora
+
+/**
+ * Limpar cache expirado
+ */
+function cleanExpiredCache() {
+  const now = Date.now();
+  for (const [key, value] of conversationCache.entries()) {
+    if (now - value.timestamp > CACHE_EXPIRY_MS) {
+      conversationCache.delete(key);
+    }
+  }
+}
 
 /**
  * Identificar funnel baseado no link_id
@@ -98,15 +138,26 @@ async function saveLeadToSheet(data: {
   utm_content?: string;
   fbclid?: string;
   gclid?: string;
+  status?: string;
 }) {
   try {
     const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     let PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
 
+    console.log('🔧 Verificando variáveis de ambiente...');
+    console.log('📋 SPREADSHEET_ID:', SPREADSHEET_ID ? `${SPREADSHEET_ID.substring(0, 10)}...` : 'NÃO CONFIGURADO');
+    console.log('📋 SERVICE_ACCOUNT_EMAIL:', SERVICE_ACCOUNT_EMAIL || 'NÃO CONFIGURADO');
+    console.log('📋 PRIVATE_KEY:', PRIVATE_KEY ? `${PRIVATE_KEY.substring(0, 20)}...` : 'NÃO CONFIGURADO');
+
     if (!SPREADSHEET_ID || !SERVICE_ACCOUNT_EMAIL || !PRIVATE_KEY) {
       console.error('❌ Variáveis de ambiente do Google Sheets não configuradas');
-      return { success: false, error: 'Configuração faltando' };
+      const missing = [];
+      if (!SPREADSHEET_ID) missing.push('GOOGLE_SHEETS_SPREADSHEET_ID');
+      if (!SERVICE_ACCOUNT_EMAIL) missing.push('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+      if (!PRIVATE_KEY) missing.push('GOOGLE_PRIVATE_KEY');
+      console.error('📋 Variáveis faltando:', missing.join(', '));
+      return { success: false, error: `Configuração faltando: ${missing.join(', ')}` };
     }
 
     // Processar chave privada
@@ -225,7 +276,7 @@ async function saveLeadToSheet(data: {
       data.message,
       data.funnel,
       data.linkId,
-      'Mensagem Enviada',
+      data.status || 'Mensagem Enviada',
       data.utm_source || '',
       data.utm_medium || '',
       data.utm_campaign || '',
@@ -236,7 +287,11 @@ async function saveLeadToSheet(data: {
     ];
 
     // Inserir dados
-    await sheets.spreadsheets.values.append({
+    console.log('📝 Inserindo linha na planilha...');
+    console.log('📋 Range:', `${SHEET_NAME}!A:O`);
+    console.log('📋 Row preview:', row.slice(0, 7).join(' | '));
+    
+    const appendResult = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A:O`,
       valueInputOption: 'RAW',
@@ -245,11 +300,21 @@ async function saveLeadToSheet(data: {
       },
     });
 
-    console.log('✅ Lead qualificado salvo no Google Sheets:', data);
+    console.log('✅ Lead qualificado salvo no Google Sheets');
+    console.log('📋 Response:', JSON.stringify(appendResult.data, null, 2));
     return { success: true };
   } catch (error: any) {
-    console.error('❌ Erro ao salvar lead no Google Sheets:', error);
-    return { success: false, error: error.message };
+    console.error('❌ Erro ao salvar lead no Google Sheets:');
+    console.error('📋 Error message:', error.message);
+    console.error('📋 Error code:', error.code);
+    console.error('📋 Error response:', error.response?.data);
+    console.error('📋 Stack trace:', error.stack);
+    return { 
+      success: false, 
+      error: error.message,
+      code: error.code,
+      details: error.response?.data 
+    };
   }
 }
 
@@ -289,6 +354,8 @@ export async function OPTIONS() {
  */
 async function processWebhook(body: TintimWebhookPayload) {
   try {
+    // Limpar cache expirado periodicamente
+    cleanExpiredCache();
 
     console.log('📥 Webhook recebido do Tintim:', {
       event: body.event,
@@ -303,57 +370,308 @@ async function processWebhook(body: TintimWebhookPayload) {
       return;
     }
 
-    // Validar que é uma mensagem recebida
-    if (body.event !== 'message_received' && body.event !== 'new_message') {
-      console.log('⚠️ Evento ignorado:', body.event);
-      return;
-    }
+    // Extrair dados de forma flexível (o Tintim pode enviar em diferentes formatos)
+    // Tentar diferentes possíveis estruturas do payload
+    let phone = body.contact?.phone || 
+                  (body as any).phone || 
+                  (body as any).from || 
+                  (body as any).sender?.phone ||
+                  (body as any).conversation?.contact?.phone ||
+                  (body as any).conversation?.phone ||
+                  (body as any).contact_phone ||
+                  (body as any).whatsapp_number ||
+                  (body as any).wa_id ||
+                  (body as any).message?.from ||
+                  (body as any).message?.contact?.phone ||
+                  (body as any).data?.phone ||
+                  (body as any).data?.contact?.phone;
+    
+    let name = body.contact?.name || 
+                 (body as any).name || 
+                 (body as any).sender?.name ||
+                 (body as any).conversation?.contact?.name ||
+                 (body as any).conversation?.name ||
+                 (body as any).contact_name ||
+                 (body as any).message?.contact?.name ||
+                 (body as any).data?.name ||
+                 (body as any).data?.contact?.name;
+    
+    const messageText = body.message?.text || 
+                        (body as any).text || 
+                        (body as any).message?.body ||
+                        (body as any).body ||
+                        (body as any).content ||
+                        (body as any).message?.content ||
+                        (body as any).data?.message ||
+                        (body as any).data?.text;
+    
+    const linkId = body.link_id || 
+                   (body as any).linkId || 
+                   (body as any).link_id ||
+                   (body as any).conversation?.link_id ||
+                   (body as any).conversation?.linkId ||
+                   (body as any).link ||
+                   (body as any).data?.link_id;
 
-    // Validar dados obrigatórios
-    if (!body.contact?.phone || !body.message?.text) {
-      console.error('❌ Dados obrigatórios faltando');
-      return;
-    }
-
-    // Identificar funnel
-    const funnel = identifyFunnel(body.link_id);
-
-    // Extrair UTMs (prioridade: payload direto > URL de referência)
+    // Extrair UTMs do payload
     let utms = {
-      utm_source: body.utm_source,
-      utm_medium: body.utm_medium,
-      utm_campaign: body.utm_campaign,
-      utm_term: body.utm_term,
-      utm_content: body.utm_content,
-      fbclid: body.fbclid,
-      gclid: body.gclid,
+      utm_source: body.utm_source || (body as any).utmSource || (body as any).utm_source,
+      utm_medium: body.utm_medium || (body as any).utmMedium || (body as any).utm_medium,
+      utm_campaign: body.utm_campaign || (body as any).utmCampaign || (body as any).utm_campaign,
+      utm_term: body.utm_term || (body as any).utmTerm || (body as any).utm_term,
+      utm_content: body.utm_content || (body as any).utmContent || (body as any).utm_content,
+      fbclid: body.fbclid || (body as any).fbclid,
+      gclid: body.gclid || (body as any).gclid,
     };
 
     // Se não tiver UTMs no payload, tentar extrair da URL de referência
-    if (!utms.utm_source && (body.referrer || body.source_url)) {
-      const utmsFromUrl = extractUTMsFromUrl(body.referrer || body.source_url);
+    if (!utms.utm_source && (body.referrer || body.source_url || (body as any).referrer || (body as any).sourceUrl)) {
+      const referrerUrl = body.referrer || body.source_url || (body as any).referrer || (body as any).sourceUrl;
+      const utmsFromUrl = extractUTMsFromUrl(referrerUrl);
       utms = { ...utms, ...utmsFromUrl };
     }
+
+    // Usar telefone como chave de cache também (além do linkId) para melhor matching
+    const cacheKey = linkId || phone || 'unknown';
+    
+    // Verificar se é um evento de mensagem enviada (não apenas recebida)
+    const isMessageSent = body.event === 'message_sent' || 
+                         body.event === 'sent' || 
+                         (body as any).type === 'sent' ||
+                         (body as any).direction === 'outbound' ||
+                         (body as any).direction === 'outgoing';
+
+    console.log('🔍 Tipo de evento detectado:', {
+      event: body.event,
+      isMessageSent,
+      hasPhone: !!phone,
+      hasMessage: !!messageText,
+      linkId: linkId || 'não informado',
+    });
+
+    // CASO 1: Webhook de "Criação de Conversa" - tem telefone mas pode não ter mensagem
+    // Armazenar no cache para usar quando chegar a mensagem
+    if (phone && !messageText && !isMessageSent) {
+      console.log('💾 Webhook de Criação de Conversa - armazenando dados no cache');
+      conversationCache.set(cacheKey, {
+        phone,
+        name,
+        linkId,
+        utms,
+        timestamp: Date.now(),
+      });
+      console.log(`✅ Dados de conversa armazenados no cache (chave: ${cacheKey})`);
+      return; // Não processar ainda, esperar pela mensagem
+    }
+
+    // CASO 2: Webhook de "Criação de Mensagem" ou "Mensagem Enviada" - tem mensagem mas pode não ter telefone
+    // Buscar telefone no cache se não estiver no payload
+    if ((messageText || isMessageSent) && !phone) {
+      console.log('🔍 Webhook de Mensagem - buscando telefone no cache');
+      
+      // Tentar buscar no cache usando linkId primeiro
+      let cachedConversation = conversationCache.get(cacheKey);
+      
+      // Se não encontrou com a chave principal, tentar buscar por linkId em todas as entradas do cache
+      if (!cachedConversation && linkId) {
+        for (const [key, value] of conversationCache.entries()) {
+          if (value.linkId === linkId) {
+            cachedConversation = value;
+            console.log(`✅ Encontrado no cache usando linkId (chave: ${key})`);
+            break;
+          }
+        }
+      }
+      
+      // Se ainda não encontrou, tentar buscar pela primeira entrada do cache (fallback)
+      if (!cachedConversation && conversationCache.size > 0) {
+        const firstEntry = Array.from(conversationCache.values())[0];
+        if (firstEntry && firstEntry.phone) {
+          cachedConversation = firstEntry;
+          console.log(`✅ Usando primeira entrada do cache como fallback`);
+        }
+      }
+      
+      if (cachedConversation) {
+        phone = cachedConversation.phone;
+        name = name || cachedConversation.name;
+        // Mesclar UTMs: prioridade para o payload atual (se não for undefined), depois cache
+        if (cachedConversation.utms) {
+          const cachedUtms = cachedConversation.utms;
+          utms = {
+            utm_source: utms.utm_source || cachedUtms.utm_source,
+            utm_medium: utms.utm_medium || cachedUtms.utm_medium,
+            utm_campaign: utms.utm_campaign || cachedUtms.utm_campaign,
+            utm_term: utms.utm_term || cachedUtms.utm_term,
+            utm_content: utms.utm_content || cachedUtms.utm_content,
+            fbclid: utms.fbclid || cachedUtms.fbclid,
+            gclid: utms.gclid || cachedUtms.gclid,
+          };
+        }
+        // Se o linkId não estava no payload mas estava no cache, usar do cache
+        if (!linkId && cachedConversation.linkId) {
+          const cachedLinkId = cachedConversation.linkId;
+          console.log(`✅ LinkId encontrado no cache: ${cachedLinkId}`);
+        }
+        console.log(`✅ Telefone encontrado no cache: ${phone}`);
+      } else {
+        console.error('❌ Telefone não encontrado no cache nem no payload');
+        console.log('📋 Chave de cache usada:', cacheKey);
+        console.log('📋 Cache atual:', Array.from(conversationCache.keys()));
+        
+        // Log detalhado de todas as propriedades do payload
+        console.log('🔎 Buscando telefone em todas as propriedades do payload...');
+        const allKeys: string[] = [];
+        const getKeys = (obj: any, prefix = ''): void => {
+          if (obj && typeof obj === 'object') {
+            Object.keys(obj).forEach(key => {
+              const fullKey = prefix ? `${prefix}.${key}` : key;
+              allKeys.push(fullKey);
+              if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                getKeys(obj[key], fullKey);
+              }
+            });
+          }
+        };
+        getKeys(body);
+        console.log('📋 Todas as chaves do payload:', allKeys.slice(0, 50));
+        
+        // Buscar valores que parecem telefones
+        const phonePattern = /(\+?55)?\d{10,15}/;
+        const findPhones = (obj: any, path = ''): string[] => {
+          const phones: string[] = [];
+          if (obj && typeof obj === 'object') {
+            Object.keys(obj).forEach(key => {
+              const fullPath = path ? `${path}.${key}` : key;
+              const value = obj[key];
+              if (typeof value === 'string' && phonePattern.test(value)) {
+                phones.push(`${fullPath}: ${value}`);
+              } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                phones.push(...findPhones(value, fullPath));
+              }
+            });
+          }
+          return phones;
+        };
+        const foundPhones = findPhones(body);
+        if (foundPhones.length > 0) {
+          console.log('📞 Possíveis telefones encontrados no payload:', foundPhones);
+          // Tentar usar o primeiro telefone encontrado
+          const firstPhone = foundPhones[0].split(': ')[1];
+          if (firstPhone) {
+            phone = firstPhone;
+            console.log(`✅ Usando telefone encontrado automaticamente: ${phone}`);
+          }
+        }
+        
+        // Se ainda não tiver telefone, não processar
+        if (!phone) {
+          console.error('❌ Não foi possível encontrar telefone. Webhook não será processado.');
+          return;
+        }
+      }
+    }
+
+    // CASO 3: Processar mensagens (recebidas ou enviadas)
+    // IMPORTANTE: Processar também mensagens enviadas (isMessageSent) mesmo sem texto
+    // Se for mensagem enviada, processar mesmo sem texto (usaremos texto padrão)
+    // Se não for mensagem enviada e não tiver texto, não processar
+    if (!isMessageSent && !messageText) {
+      console.log('⚠️ Webhook ignorado: sem mensagem para processar');
+      console.log('📋 Dados extraídos:', { phone, name, linkId, hasMessage: !!messageText, isMessageSent });
+      return;
+    }
+
+    // Se ainda não tiver telefone após buscar no cache, tentar uma última busca
+    if (!phone) {
+      // Tentar buscar telefone em qualquer entrada do cache que tenha linkId correspondente
+      if (linkId) {
+        for (const [key, value] of conversationCache.entries()) {
+          if (value.linkId === linkId && value.phone) {
+            phone = value.phone;
+            name = name || value.name;
+            console.log(`✅ Telefone encontrado no cache na última tentativa (chave: ${key}): ${phone}`);
+            break;
+          }
+        }
+      }
+      
+      // Se ainda não tiver telefone, não processar
+      if (!phone) {
+        console.error('❌ Dados obrigatórios faltando: telefone não encontrado no payload nem no cache');
+        console.log('💡 Verifique se o webhook de "Criação de Conversa" foi recebido antes');
+        console.log('📋 Dados extraídos:', { phone, name, linkId, messageText: messageText?.substring(0, 50), isMessageSent });
+        console.log('📋 Chave de cache:', cacheKey);
+        console.log('📋 Cache disponível:', Array.from(conversationCache.keys()));
+        return;
+      }
+    }
+    
+    // Para mensagens enviadas, usar uma mensagem padrão se não houver texto
+    const finalMessageText = messageText || (isMessageSent ? 'Mensagem enviada via WhatsApp' : '');
+    
+    // Esta verificação não deve ser necessária agora, mas mantemos como segurança
+    if (!finalMessageText) {
+      console.log('⚠️ Webhook ignorado: sem mensagem para processar (caso inesperado)');
+      return;
+    }
+
+    // Log dos dados extraídos antes de processar
+    console.log('🔍 Dados extraídos do webhook:', {
+      phone,
+      name: name || 'Não informado',
+      messageLength: finalMessageText?.length || 0,
+      linkId: linkId || 'desconhecido',
+      hasUtms: !!(utms.utm_source || utms.utm_medium || utms.utm_campaign),
+      isMessageSent,
+      event: body.event,
+    });
+
+    // Identificar funnel
+    const funnel = identifyFunnel(linkId);
+    console.log('🎯 Funnel identificado:', funnel);
 
     // Preparar dados
     const leadData = {
       timestamp: new Date().toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo',
       }),
-      name: body.contact.name || 'Não informado',
-      phone: body.contact.phone,
-      message: body.message.text,
+      name: name || 'Não informado',
+      phone: phone,
+      message: finalMessageText,
       funnel: funnel,
-      linkId: body.link_id || 'desconhecido',
+      linkId: linkId || 'desconhecido',
       ...utms,
     };
 
+    console.log('💾 Tentando salvar lead no Google Sheets...');
+    console.log('📋 Dados do lead:', JSON.stringify(leadData, null, 2));
+
+    // Determinar status baseado no tipo de evento
+    const status = isMessageSent ? 'Mensagem Enviada' : 'Mensagem Recebida';
+
     // Salvar no Google Sheets (em background)
-    await saveLeadToSheet(leadData);
+    const saveResult = await saveLeadToSheet({
+      ...leadData,
+      status,
+    });
+    
+    if (saveResult.success) {
+      console.log('✅ Lead salvo com sucesso no Google Sheets');
+    } else {
+      console.error('❌ Erro ao salvar lead no Google Sheets:', saveResult.error);
+    }
+
+    // Limpar do cache após processar
+    if (conversationCache.has(cacheKey)) {
+      conversationCache.delete(cacheKey);
+      console.log(`🗑️ Dados removidos do cache (chave: ${cacheKey})`);
+    }
 
     console.log('✅ Lead processado com sucesso:', leadData);
   } catch (error: any) {
     console.error('❌ Erro ao processar webhook do Tintim:', error);
+    console.error('📋 Stack trace:', error.stack);
   }
 }
 
@@ -365,6 +683,9 @@ export async function POST(request: NextRequest) {
   try {
     // Ler o body antes de processar em background
     const body: TintimWebhookPayload = await request.json();
+
+    // Log completo do payload recebido (para diagnóstico)
+    console.log('PAYLOAD DO TIMTIM AQUI:', JSON.stringify(body, null, 2));
 
     // Retornar 200 OK imediatamente (antes de processar)
     const response = NextResponse.json({
@@ -393,13 +714,39 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Endpoint GET para testar o webhook
+ * Endpoint GET para testar o webhook e diagnóstico
  */
 export async function GET() {
+  // Verificar variáveis de ambiente
+  const hasSpreadsheetId = !!process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const hasServiceAccount = !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const hasPrivateKey = !!process.env.GOOGLE_PRIVATE_KEY;
+  const hasN8nUrl = !!process.env.N8N_WEBHOOK_URL;
+  
+  const envStatus = {
+    GOOGLE_SHEETS_SPREADSHEET_ID: hasSpreadsheetId ? '✅ Configurado' : '❌ Não configurado',
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: hasServiceAccount ? '✅ Configurado' : '❌ Não configurado',
+    GOOGLE_PRIVATE_KEY: hasPrivateKey ? '✅ Configurado' : '❌ Não configurado',
+    N8N_WEBHOOK_URL: hasN8nUrl ? '✅ Configurado' : '⚠️ Opcional',
+  };
+  
+  // Verificar cache
+  const cacheSize = conversationCache.size;
+  const cacheKeys = Array.from(conversationCache.keys()).slice(0, 10);
+  
   return NextResponse.json({
+    status: 'ok',
     message: 'Webhook do Tintim está funcionando',
     endpoint: '/api/tintim-webhook',
     method: 'POST',
+    environment: {
+      nodeEnv: process.env.NODE_ENV || 'development',
+      variables: envStatus,
+    },
+    cache: {
+      size: cacheSize,
+      keys: cacheKeys,
+    },
     expectedPayload: {
       event: 'message_received',
       contact: {
@@ -411,6 +758,9 @@ export async function GET() {
       },
       link_id: '855a2f73-2af0-445f-aaa2-6e5d42a4a6bf',
     },
+    diagnostic: {
+      note: 'Envie uma requisição POST para este endpoint com os dados do webhook do Tintim',
+      checkLogs: 'Verifique os logs do servidor para ver o payload completo recebido',
+    },
   });
 }
-
