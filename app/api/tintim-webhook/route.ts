@@ -234,6 +234,8 @@ export async function POST(request: NextRequest) {
 
     const { phone, name, messageText, funnel, linkId, utms, isMessageSent } = extractDataFromWebhook(body);
 
+    if (!isMessageSent) return NextResponse.json({message:"doesn't need saving"}, { status: 200 });
+    
     const payload = {
       timestamp: new Date().toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo',
