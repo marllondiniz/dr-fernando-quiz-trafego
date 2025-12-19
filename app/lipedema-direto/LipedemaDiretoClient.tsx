@@ -167,10 +167,10 @@ export function LipedemaDiretoClient() {
         <h2 className={styles.sectionTitle}>
           Resultados <span className={styles.highlight}>comprovados.</span>
           <br />
-          O método <span className={styles.highlightAlt}>funciona.</span>
+          O protocolo <span className={styles.highlightAlt}>funciona.</span>
         </h2>
         <p className={styles.description}>
-          Veja a transformação real de mulheres que receberam <strong>tratamento especializado</strong> para Lipedema.
+          Veja a transformação real de mulheres que receberam <strong>acompanhamento</strong> para Lipedema.
         </p>
         
         {/* Gallery Grid Desktop */}
@@ -178,7 +178,7 @@ export function LipedemaDiretoClient() {
           <div className={styles.galleryItem}>
             <Image
               src="/lipedema1.png"
-              alt="Resultado do tratamento de Lipedema - Caso 1"
+              alt="Resultado do acompanhamento de Lipedema - Caso 1"
               width={600}
               height={800}
               className={styles.galleryImage}
@@ -189,7 +189,7 @@ export function LipedemaDiretoClient() {
           <div className={styles.galleryItem}>
             <Image
               src="/lipedema2.png"
-              alt="Resultado do tratamento de Lipedema - Caso 2"
+              alt="Resultado do acompanhamento de Lipedema - Caso 2"
               width={600}
               height={800}
               className={styles.galleryImage}
@@ -199,7 +199,7 @@ export function LipedemaDiretoClient() {
           <div className={styles.galleryItem}>
             <Image
               src="/lipedema3.png"
-              alt="Resultado do tratamento de Lipedema - Caso 3"
+              alt="Resultado do acompanhamento de Lipedema - Caso 3"
               width={600}
               height={800}
               className={styles.galleryImage}
@@ -217,7 +217,7 @@ export function LipedemaDiretoClient() {
             <div className={styles.galleryItemCarousel}>
               <Image
                 src="/lipedema1.png"
-                alt="Resultado do tratamento de Lipedema - Caso 1"
+                alt="Resultado do acompanhamento de Lipedema - Caso 1"
                 width={600}
                 height={800}
                 className={styles.galleryImage}
@@ -228,7 +228,7 @@ export function LipedemaDiretoClient() {
             <div className={styles.galleryItemCarousel}>
               <Image
                 src="/lipedema2.png"
-                alt="Resultado do tratamento de Lipedema - Caso 2"
+                alt="Resultado do acompanhamento de Lipedema - Caso 2"
                 width={600}
                 height={800}
                 className={styles.galleryImage}
@@ -238,7 +238,7 @@ export function LipedemaDiretoClient() {
             <div className={styles.galleryItemCarousel}>
               <Image
                 src="/lipedema3.png"
-                alt="Resultado do tratamento de Lipedema - Caso 3"
+                alt="Resultado do acompanhamento de Lipedema - Caso 3"
                 width={600}
                 height={800}
                 className={styles.galleryImage}
@@ -272,7 +272,7 @@ export function LipedemaDiretoClient() {
             <svg className={styles.badgeIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
-            <span>Lipedema tem tratamento</span>
+            <span>Lipedema tem solução</span>
           </div>
 
           <h1 className={styles.headline}>
@@ -318,13 +318,13 @@ export function LipedemaDiretoClient() {
               <svg viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
-              <span>Protocolo especializado</span>
+              <span>Acompanhamento personalizado</span>
             </div>
             <div className={styles.trustBadge}>
               <svg viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
-              <span>Tratamento hormonal</span>
+              <span>Acompanhamento hormonal</span>
             </div>
             <div className={styles.trustBadge}>
               <svg viewBox="0 0 24 24" fill="currentColor">
@@ -377,7 +377,7 @@ export function LipedemaDiretoClient() {
       {/* Deliverables */}
       <section className={`${styles.section} ${styles.deliverables}`}>
         <h2 className={styles.sectionTitle}>
-          O que você recebe no <span className={styles.highlightAlt}>Protocolo de Tratamento</span>
+          O que você recebe no <span className={styles.highlightAlt}>acompanhamento</span>
           <br />
           para Lipedema
         </h2>
@@ -446,7 +446,7 @@ export function LipedemaDiretoClient() {
         <h2 className={styles.sectionTitle}>
           Você <span className={styles.highlight}>não precisa sofrer calada.</span>
           <br />
-          Lipedema tem <span className={styles.highlightAlt}>tratamento.</span>
+          Lipedema tem <span className={styles.highlightAlt}>solução.</span>
         </h2>
         <p className={styles.description}>
           Força de vontade não vence desequilíbrio hormonal. Mas existe <strong>diagnóstico</strong>. <strong>Estratégia</strong>. <strong>Resultado</strong>.
